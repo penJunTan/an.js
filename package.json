@@ -1,0 +1,17 @@
+{
+  "name": "an.js",
+  "version": "0.1.0",
+  "description": "an enthusiastic project",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "penJunTan",
+  "license": "MIT",
+  "devDependencies": {
+    "bower": "^1.3.7"
+  },
+  "dependencies": {
+    "browserify": "^4.2.0"
+  }
+}

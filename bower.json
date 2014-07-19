@@ -1,0 +1,21 @@
+{
+  "name": "an.js",
+  "version": "0.1.0",
+  "authors": [
+    "penJunTan <penJunTan@gmail.com>"
+  ],
+  "description": "an enthusiastic project",
+  "main": "index.js",
+  "license": "MIT",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "requirejs": "~2.1.14"
+  }
+}
