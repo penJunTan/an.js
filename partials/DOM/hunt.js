@@ -111,19 +111,20 @@
 		getElementByClass: function(className, sTag){
 			var
 				collection,
-				len
+				len,
+				hasClass = domCharacterHelper.match.__class
 			;
 
 			sTag = sTag || "*";
 			sTag = sTag.toLowerCase();
 
-			collection = document.getElementsByTagName(sTag);
+			collection = document.getElementsByTagName(sTag) || [];
 			collection = slice(collection);
 
 			len = collection.length;
 
 			while(len--){
-				if(!domCharacterHelper.match.__class(collection[len], className)){
+				if(!hasClass(collection[len], className)){
 					collection.splice(len, 1);
 				}
 			}
@@ -153,10 +154,6 @@
 				// 伪类可能直接修改 collectionCurrent, 跳过整个循环
 				// 比如 eq(0)
 				if(!itemArrCurrentElem){ break }
-
-				if(!Array.isArray(itemArrCurrentElem)){
-					itemArrCurrentElem = [itemArrCurrentElem];
-				}
 
 				itemArrNewMatched = [];
 				itemArrCurrentElem.forEach(function(elem){
@@ -200,7 +197,7 @@
 		},
 
 		// 父辈们是否匹配
-		ancestor: function(subExpr, collection, collectionCurrent ,iStrategy){
+		ancestor: function(subExpr, collection, collectionCurrent, iStrategy){
 			var args = slice(arguments);
 
 			args.push(function(elem, judge){
@@ -310,13 +307,14 @@
 	 * @type {{match: {__id: __id, __class: __class, __Tag: __Tag}}}
 	 */
 	domCharacterHelper = {
+
 		match: {
 
 			__id: function(elem, idFlag){
 				var _id = elem.id;
 
-				if("#" === idFlag[0]){
-					idFlag = idFlag.slice(1);
+				if(0 === idFlag.indexOf("#")){
+					idFlag = idFlag.substr(1);
 				}
 
 				return _id ? _id.toLowerCase() === idFlag.toLowerCase() : false;
@@ -334,6 +332,10 @@
 					cookedClassName,
 					preFence
 				;
+
+				if(0 === className.indexOf(".")){
+					className = className.substr(1);
+				}
 
 				if(elem.classList){
 					return elem.classList.contains(className);
@@ -364,26 +366,39 @@
 
 			/**
 			 * equal attribute value
-			 * TODO: 后期可扩展为 $, *, ^, !, ~
 			 * @param elem
-			 * @param equation
+			 * @param equationExpr
 			 * @returns {boolean}
 			 * @private
 			 */
-			__attr: function(elem, equation){
+			__attr: function(elem, equationExpr){
 				var
-					attr,
-					value,
-					pass
+					equation,
+					attrValue,
+					bPass
 				;
 
-				equation = equation.split("=");
-				attr = equation[0];
-				value = equation[1];
+				// 获取 赋值符号
+				equation = equationExpr.match(/=|\$=|\*=|\^=|\|=|~=/g);
 
-				pass = value === elem.getAttribute(attr);
+				if(equation){
+					equation = equation[0];
+					equationExpr = equationExpr.split(equation);
+					attrValue = elem.getAttribute(equationExpr[0]);
 
-				return pass;
+					bPass = (attrValue &&
+					          attrValue.match(
+						          new RegExp(
+							          domCharacterHelper.__attrMatch(equation, equationExpr[1])
+						          )
+					          )
+						);
+
+				}else{
+					bPass =  "string" === typeof elem.getAttribute(equationExpr);
+				}
+
+				return bPass;
 
 			},
 
@@ -398,6 +413,42 @@
 
 				console.debug(elem, equation, collection, collectionCurrent);
 			}
+		},
+
+		__attrMatch: function(equation, value){
+			var match;
+			switch (equation){
+				case "=":
+					match = "^" + value + "$";
+					break;
+
+				case "$=":
+					match = value + "$";
+					break;
+
+				case "*=":
+					match = value;
+					break;
+
+				case "^=":
+					match = "^" + value;
+					break;
+
+				case "|=":
+					match = "^" + value + "-";
+					break;
+
+				case "~=":
+					match = "[\\s\\b]" + value + "[\\s\\b]";
+					break;
+
+			}
+
+			return match;
+		},
+
+		__pseudoFn: {
+
 		},
 
 		relativeHash: {
@@ -419,7 +470,7 @@
 		space      : /\s+/g,
 		prefixFlag : /\s+([\.#])/g,
 		specialFlag: /~Tan~/g,
-		groupSet   : /\s|>|\+|~/g,
+		groupSet   : /\s|>|\+|~(?!=)/g,
 		exprUnit   : /[\.\#]*([^\.#:\[\]])+/g
 	};
 
@@ -481,7 +532,8 @@
 		}
 
 		console.debug("final: " ,  _collectionDom);
-		console.debug("queryAll: " ,  slice(document.querySelectorAll(expr)));
+		console.debug("Native QueryAll: " ,  slice(document.querySelectorAll(expr)));
+		console.debug(new Array(40).join("__"));
 		_collectionPioneerDom.length = 0;
 
 		return _collectionDom;
@@ -495,7 +547,9 @@
 		if(0 === collection.length){
 
 			collection.push.apply(collection, atomEngine["__" + (iStrategy.action || "hunt")](iStrategy.atomExpr));
-			_collectionPioneerDom.push.apply(_collectionPioneerDom, collection);
+			collection.forEach(function(item){
+				_collectionPioneerDom.push([item]);
+			});
 
 		}else{
 
@@ -596,7 +650,7 @@
 
 		console.log(JSON.stringify(strategyContainer).replace(/\},\{/g, "},\n{"));
 
-		return strategyContainer
+		return strategyContainer;
 	}
 
 	// step2: 判断是否存在 [] , 进行属性选择
@@ -647,7 +701,7 @@
 
 		}
 
-		return selector;
+		return selector || "*";
 	}
 
 	/**
@@ -682,14 +736,15 @@
 			}
 		;
 
-		mulSelector = selector.match(regPool.exprUnit);
+		// exprUnit   : /[\.\#]*([^\.#:\[\]])+/g
+		mulSelector = selector.match(/[\.\#]*([^\.#])+/g);
 
 		if(1 === mulSelector.length){
 			newSelector = selector;
 
 		}else{
 
-			newSelector = mulSelector.pop();
+			newSelector = mulSelector.shift();
 
 			strategyAssembleContainer = [];
 

@@ -1,0 +1,18 @@
+{
+
+  "newcap": true,
+  "expr"  : true,
+  "boss"  : true,
+  "eqeqeq": true,
+  "undef" : true,
+  "unused": true,
+  "curly" : true,
+  "sub"   : true,
+
+  "node"   : true,
+  "browser": true,
+
+  "globals": {
+  }
+
+}
